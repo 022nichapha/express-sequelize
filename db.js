@@ -1,30 +1,29 @@
 import { Sequelize, DataTypes } from "sequelize";
+import { Client, Pool, neonConfig } from "@neondatabase/serverless";
+import pg from "pg";
+import ws from "ws";
+import dotenv from "dotenv";
 
-const isProduction = process.env.NODE_ENV === "production";
-const sequelize = process.env.DATABASE_URL
-  ? new Sequelize(process.env.DATABASE_URL, {
-      dialect: "postgres",
-      logging: false,
-      dialectOptions: isProduction
-        ? {
-            ssl: {
-              require: true,
-              rejectUnauthorized: false,
-            },
-          }
-        : {},
-    })
-  : new Sequelize(
-      process.env.PGDATABASE || "product_db",
-      process.env.PGUSER || "dev_user",
-      process.env.PGPASSWORD || "dev_password",
-      {
-        host: process.env.PGHOST || "localhost",
-        port: Number(process.env.PGPORT) || 5433,
-        dialect: "postgres",
-        logging: false,
-      },
-    );
+dotenv.config();
+
+neonConfig.webSocketConstructor = ws;
+
+// ผสาน Client/Pool ของ Neon เข้ากับ types ของ pg
+const sequelize = new Sequelize(process.env.POSTGRES_URL, {
+  dialect: "postgres",
+  dialectModule: {
+    Client,
+    Pool,
+    types: pg.types, // ใส่ types เพิ่มแก้ error getTypeParser
+  },
+  logging: false,
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
+});
 
 const Product = sequelize.define("Product", {
   id: {
@@ -45,7 +44,7 @@ const Product = sequelize.define("Product", {
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log("Connected to PostgreSQL!!");
+    console.log("Connected to Neon PostgreSQL via WebSocket (Port 443)!!");
     await sequelize.sync();
     console.log("Table synchronized !");
   } catch (error) {
