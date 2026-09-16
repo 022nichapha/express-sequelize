@@ -3,6 +3,7 @@ import { Client, Pool, neonConfig } from "@neondatabase/serverless";
 import pg from "pg";
 import ws from "ws";
 import dotenv from "dotenv";
+import express from "express"; // 1. Import express เพิ่มเข้ามา
 
 dotenv.config();
 
@@ -14,7 +15,7 @@ const sequelize = new Sequelize(process.env.POSTGRES_URL, {
   dialectModule: {
     Client,
     Pool,
-    types: pg.types, // ใส่ types เพิ่มแก้ error getTypeParser
+    types: pg.types,
   },
   logging: false,
   dialectOptions: {
@@ -53,4 +54,21 @@ const connectDB = async () => {
   }
 };
 
-export { sequelize, Product, connectDB };
+// 2. สร้าง Express App และสั่งให้เปิด Port ตามที่ Server กำหนด
+const app = express();
+app.use(express.json());
+
+// Health Check Endpoint เพื่อให้ PaaS ตรวจสอบสถานะ Server ได้
+app.get("/", (req, res) => {
+  res.send("Server is running!");
+});
+
+// ดึง PORT จาก Environment Variable (ถ้าไม่มีให้ถอยไปใช้ 5435 หรือ 3000)
+const PORT = process.env.PORT || 5435;
+
+app.listen(PORT, "0.0.0.0", async () => {
+  console.log(`Server is running on port ${PORT}`);
+  await connectDB(); // เชื่อมต่อ Database หลังจาก Server บูตพอร์ตเรียบร้อยแล้ว
+});
+
+export { sequelize, Product, connectDB, app };
