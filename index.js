@@ -1,8 +1,11 @@
 import express from "express";
 import cors from "cors";
 import { Product, connectDB } from "./db.js";
+
 const app = express();
-const PORT = 5000;
+
+// 1. รับ PORT จาก Environment Variable ของ Render (ถ้าไม่มีให้ถอยไปใช้ 5000)
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
@@ -17,7 +20,7 @@ app.get("/", (req, res) => {
 app.post("/api/products", async (req, res) => {
   try {
     const { name, price } = req.body;
-    if (!name || !price) {
+    if (!name || price === undefined) {
       return res
         .status(400)
         .json({ message: "Name & Price are required fields!!" });
@@ -43,17 +46,16 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
-//find by Id
-
+// Find by Id
 app.get("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400)({ message: "Id needed!" });
+      return res.status(400).json({ message: "Id needed!" }); // แก้ไขจุดที่ลบ .json
     }
     const product = await Product.findByPk(id);
     if (!product) {
-      return res.status(404)({ message: "Product not Found!" });
+      return res.status(404).json({ message: "Product not Found!" }); // แก้ไขจุดที่ลบ .json
     }
     return res.status(200).json(product);
   } catch (error) {
@@ -61,7 +63,7 @@ app.get("/api/products/:id", async (req, res) => {
   }
 });
 
-// อัพเดท Product
+// อัปเดต Product
 app.put("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -69,18 +71,18 @@ app.put("/api/products/:id", async (req, res) => {
       return res.status(400).json({ message: "Id needed!" });
     }
     const { name, price } = req.body;
-    if (!name && !price) {
+    if (!name && price === undefined) {
       return res
         .status(400)
-        .json({ message: "Name & Price are required fields!!" });
+        .json({ message: "Name or Price required for update!" });
     }
     const product = await Product.findByPk(id);
     if (!product) {
-      return res.status(404)({ message: "Product not Found!" });
+      return res.status(404).json({ message: "Product not Found!" }); // แก้ไขจุดที่ลบ .json
     }
     await product.update({
       name: name || product.name,
-      price: Number(price) || product.price,
+      price: price !== undefined ? Number(price) : product.price,
     });
     return res.status(200).json(product);
   } catch (error) {
@@ -88,7 +90,7 @@ app.put("/api/products/:id", async (req, res) => {
   }
 });
 
-//Delete product
+// Delete product
 app.delete("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -97,11 +99,11 @@ app.delete("/api/products/:id", async (req, res) => {
     }
     const product = await Product.findByPk(id);
     if (!product) {
-      return res.status(404)({ message: "Product not Found!" });
+      return res.status(404).json({ message: "Product not Found!" }); // แก้ไขจุดที่ลบ .json
     }
     await product.destroy();
     return res.status(200).json({
-      massage: "product is deleted successfully",
+      message: "product is deleted successfully",
       deleteProduct: product,
     });
   } catch (error) {
@@ -109,6 +111,7 @@ app.delete("/api/products/:id", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on: http://localhost:${PORT}`);
+// 2. ผูก IP "0.0.0.0" เพื่อให้ภายนอกยิงเข้ามาหา Server ได้
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server is running on port: ${PORT}`);
 });
