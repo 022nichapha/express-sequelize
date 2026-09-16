@@ -1,13 +1,31 @@
 import { Sequelize, DataTypes } from "sequelize";
-//database connection
-const sequelize = new Sequelize("product_db", "dev_user", "dev_password", {
-  host: "localhost",
-  port: 5433,
-  dialect: "postgres",
-  logging: false,
-});
 
-//define database schema
+const isProduction = process.env.NODE_ENV === "production";
+const sequelize = process.env.DATABASE_URL
+  ? new Sequelize(process.env.DATABASE_URL, {
+      dialect: "postgres",
+      logging: false,
+      dialectOptions: isProduction
+        ? {
+            ssl: {
+              require: true,
+              rejectUnauthorized: false,
+            },
+          }
+        : {},
+    })
+  : new Sequelize(
+      process.env.PGDATABASE || "product_db",
+      process.env.PGUSER || "dev_user",
+      process.env.PGPASSWORD || "dev_password",
+      {
+        host: process.env.PGHOST || "localhost",
+        port: Number(process.env.PGPORT) || 5433,
+        dialect: "postgres",
+        logging: false,
+      },
+    );
+
 const Product = sequelize.define("Product", {
   id: {
     type: DataTypes.INTEGER,
@@ -35,4 +53,5 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
+
 export { sequelize, Product, connectDB };
